@@ -4,12 +4,16 @@ import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
-import javafx.scene.layout.Pane;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
 
 public class MainController {
 
-    // --- Center Preview & Drop Zone ---
-    @FXML private Pane dropZonePane;
+    // --- Layers ---
+    @FXML private BorderPane mainEditorPane;
+    @FXML private VBox initialDropZoneVBox;
+
+    // --- Center Preview ---
     @FXML private ImageView originalImageView;
     @FXML private ImageView vectorizedImageView;
 
@@ -40,14 +44,26 @@ public class MainController {
 
     @FXML
     public void initialize() {
-        // Populate the custom color box with values 2 to 5[cite: 244]
+        // Populate the custom color box with values 2 to 5
         customColorBox.setItems(FXCollections.observableArrayList(2, 3, 4, 5));
-        customColorBox.setValue(2); // Set default to 2 colors[cite: 244]
+        customColorBox.setValue(2); // Set default to 2 colors[cite: 484]
 
         // Disable the ChoiceBox unless "Custom" is selected
         customColorBox.disableProperty().bind(customColorRadio.selectedProperty().not());
+    }
 
-        // You and Mary can add your event listeners here later
-        // Example: exportAllBtn.setOnAction(e -> handleBatchExport());
+    // Mary will call this method when a file is dropped
+    public void showMainEditor() {
+        // 1. Swap the visible layers
+        initialDropZoneVBox.setVisible(false);
+        mainEditorPane.setVisible(true);
+
+        // 2. Grab the current window (Stage) and expand it
+        javafx.stage.Stage stage = (javafx.stage.Stage) mainEditorPane.getScene().getWindow();
+        stage.setWidth(1200);
+        stage.setHeight(800);
+
+        // 3. Re-center the newly enlarged window on the user's screen
+        stage.centerOnScreen();
     }
 }

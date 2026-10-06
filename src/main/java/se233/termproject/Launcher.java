@@ -14,7 +14,7 @@ public class Launcher extends Application {
     public void start(Stage stage) throws IOException {
         // Loads your main-view.fxml directly
         FXMLLoader fxmlLoader = new FXMLLoader(Launcher.class.getResource("main-view.fxml"));
-        Scene scene = new Scene(fxmlLoader.load(), 1200, 800);
+        Scene scene = new Scene(fxmlLoader.load(), 600, 400);
         stage.setTitle("Vector Graphics Conversion Utility");
         stage.setScene(scene);
         stage.show();
