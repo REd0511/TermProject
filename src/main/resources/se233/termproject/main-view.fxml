@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane prefHeight="800.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="se233.project1.controller.MainController">
+
+    <!-- Top Toolbar -->
+    <top>
+        <ToolBar prefHeight="40.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+            <items>
+                <Button fx:id="zoomInBtn" text="Zoom In" />
+                <Button fx:id="zoomOutBtn" text="Zoom Out" />
+                <Button fx:id="zoomFitBtn" text="Zoom to Fit" />
+            </items>
+        </ToolBar>
+    </top>
+
+    <!-- Center Split Preview & Drop Zone -->
+    <center>
+        <SplitPane dividerPositions="0.5" prefHeight="160.0" prefWidth="200.0" BorderPane.alignment="CENTER">
+            <items>
+                <BorderPane fx:id="dropZonePane" style="-fx-background-color: #ffffff;">
+                    <top>
+                        <Label text="Original Image" BorderPane.alignment="CENTER">
+                            <padding><Insets top="10.0" /></padding>
+                        </Label>
+                    </top>
+                    <center>
+                        <ImageView fx:id="originalImageView" fitHeight="400.0" fitWidth="400.0" preserveRatio="true" BorderPane.alignment="CENTER" />
+                    </center>
+                    <bottom>
+                        <Label text="Waiting for image..." BorderPane.alignment="CENTER">
+                            <padding><Insets bottom="10.0" /></padding>
+                        </Label>
+                    </bottom>
+                </BorderPane>
+                <BorderPane style="-fx-background-color: #f8f9fa;">
+                    <top>
+                        <Label text="Vectorized Result" BorderPane.alignment="CENTER">
+                            <padding><Insets top="10.0" /></padding>
+                        </Label>
+                    </top>
+                    <center>
+                        <ImageView fx:id="vectorizedImageView" fitHeight="400.0" fitWidth="400.0" preserveRatio="true" BorderPane.alignment="CENTER" />
+                    </center>
+                    <bottom>
+                        <Label text="Ready to process" BorderPane.alignment="CENTER">
+                            <padding><Insets bottom="10.0" /></padding>
+                        </Label>
+                    </bottom>
+                </BorderPane>
+            </items>
+        </SplitPane>
+    </center>
+
+    <!-- Right Settings Panel -->
+    <right>
+        <VBox prefWidth="300.0" spacing="15.0" BorderPane.alignment="CENTER">
+            <padding>
+                <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+            </padding>
+            <children>
+                <Button fx:id="exportAllBtn" maxWidth="1.7976931348623157E308" prefHeight="45.0" style="-fx-background-color: #337ab7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="Download Result" />
+
+                <Label text="Improve result">
+                    <font><Font name="System Bold" size="16.0" /></font>
+                    <VBox.margin><Insets top="10.0" /></VBox.margin>
+                </Label>
+
+                <Label text="Detail level" />
+                <HBox spacing="5.0">
+                    <children>
+                        <ToggleButton fx:id="detailLowBtn" text="Low">
+                            <toggleGroup><ToggleGroup fx:id="detailGroup" /></toggleGroup>
+                        </ToggleButton>
+                        <ToggleButton fx:id="detailMedBtn" selected="true" text="Medium" toggleGroup="$detailGroup" />
+                        <ToggleButton fx:id="detailHighBtn" text="High" toggleGroup="$detailGroup" />
+                    </children>
+                </HBox>
+
+                <Label text="Colors">
+                    <VBox.margin><Insets top="10.0" /></VBox.margin>
+                </Label>
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <children>
+                        <RadioButton fx:id="unlimitedColorRadio" selected="true" text="Unlimited">
+                            <toggleGroup><ToggleGroup fx:id="colorGroup" /></toggleGroup>
+                        </RadioButton>
+                        <RadioButton fx:id="customColorRadio" text="Custom" toggleGroup="$colorGroup" />
+                    </children>
+                </HBox>
+                <ChoiceBox fx:id="customColorBox" prefWidth="80.0" />
+
+                <Label text="Advanced">
+                    <font><Font name="System Bold" size="14.0" /></font>
+                    <VBox.margin><Insets top="10.0" /></VBox.margin>
+                </Label>
+
+                <CheckBox fx:id="removeBackgroundCheck" text="Remove Background" />
+
+                <!-- Pushes the navigation to the bottom -->
+                <Region VBox.vgrow="ALWAYS" />
+
+                <HBox alignment="CENTER" spacing="10.0">
+                    <children>
+                        <Button fx:id="backBtn" prefHeight="35.0" prefWidth="100.0" text="&lt; Back" />
+                        <Button fx:id="nextBtn" prefHeight="35.0" prefWidth="100.0" text="Next &gt;" />
+                    </children>
+                </HBox>
+                <ProgressBar fx:id="exportProgressBar" maxWidth="1.7976931348623157E308" progress="0.0" />
+            </children>
+        </VBox>
+    </right>
+</BorderPane>
