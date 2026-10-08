@@ -9,39 +9,39 @@ public class VectorizationTask {
 
     public static File vectorize(File inputFile, boolean highDetail, int colorCount) {
         try {
-            // 1. Potrace requires .bmp input format, so convert PNG/JPG -> BMP first
+            // 1. Convert PNG/JPG -> BMP for Potrace input
             BufferedImage bufferedImage = ImageIO.read(inputFile);
             File tempBmp = File.createTempFile("potrace_input_", ".bmp");
             ImageIO.write(bufferedImage, "bmp", tempBmp);
 
-            // 2. Output SVG file destination
-            File outputSvg = File.createTempFile("vector_output_", ".svg");
+            // 2. Output BMP/PGM preview file for JavaFX ImageView
+            File outputPreview = File.createTempFile("vector_preview_", ".bmp");
 
-            // 3. Locate potrace binary in your tools directory (or system PATH)
-            // Adjust executable name ("potrace" or "potrace.exe" depending on OS)
+            // Path to potrace binary
             String potracePath = "src/main/resources/se233/termproject/tools/potrace";
 
-            // Build Potrace CLI Arguments
+            // Build ProcessBuilder command
+            // Note: -b bmp outputs a BMP file that JavaFX ImageView can render natively
             ProcessBuilder pb = new ProcessBuilder(
                     potracePath,
-                    "-s", // Output SVG format
-                    "-o", outputSvg.getAbsolutePath(),
+                    "-b", "bmp", // Output BMP format for JavaFX preview
+                    "-o", outputPreview.getAbsolutePath(),
                     tempBmp.getAbsolutePath()
             );
 
             Process process = pb.start();
             int exitCode = process.waitFor();
 
-            // Cleanup temp BMP
             tempBmp.deleteOnExit();
 
             if (exitCode == 0) {
-                return outputSvg;
+                return outputPreview;
             } else {
                 System.err.println("Potrace process failed with exit code: " + exitCode);
             }
         } catch (Exception e) {
             System.err.println("Error executing vectorization: " + e.getMessage());
+            e.printStackTrace();
         }
         return null;
     }
