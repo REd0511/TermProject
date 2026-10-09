@@ -316,13 +316,16 @@ public class VectorizationTask {
     }
 
     private static File resolvePotraceBinary() {
-        File f1 = new File("src/main/resources/se233/termproject/tools/potrace");
+        String os = System.getProperty("os.name").toLowerCase();
+        String extension = os.contains("win") ? ".exe" : "";
+
+        File f1 = new File("src/main/resources/se233/termproject/tools/potrace" + extension);
         if (f1.exists()) {
             f1.setExecutable(true);
             return f1;
         }
 
-        File f2 = new File("target/classes/se233/termproject/tools/potrace");
+        File f2 = new File("target/classes/se233/termproject/tools/potrace" + extension);
         if (f2.exists()) {
             f2.setExecutable(true);
             return f2;
