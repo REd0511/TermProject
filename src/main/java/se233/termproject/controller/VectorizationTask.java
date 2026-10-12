@@ -16,17 +16,11 @@ public class VectorizationTask {
     /**
      * Renders a raster preview PNG for JavaFX UI display.
      */
-    public static File vectorize(File inputFile, String detailLevel, int colorCount, boolean removeBackground) throws Exception {
+    public static Object[] vectorizeAndGetPalette(File inputFile, String detailLevel, int colorCount, boolean removeBackground, List<String> userHexColors) throws Exception {
         File potraceBinary = resolvePotraceBinary();
-        if (potraceBinary == null) {
-            throw new FileNotFoundException("Potrace binary missing. Ensure executable exists in project resources.");
-        }
+        if (potraceBinary == null) throw new FileNotFoundException("Potrace binary missing.");
 
         BufferedImage rawImage = ImageIO.read(inputFile);
-        if (rawImage == null) {
-            throw new IOException("Unable to read image file: " + inputFile.getName());
-        }
-
         BufferedImage bufferedImage = flattenToWhite(rawImage);
         int width = bufferedImage.getWidth();
         int height = bufferedImage.getHeight();
@@ -37,7 +31,6 @@ public class VectorizationTask {
         int targetK = (colorCount > 0) ? colorCount : 12;
         List<Color> palette = extractKMeansPalette(bufferedImage, targetK);
         BufferedImage processedImage = quantizeToPalette(bufferedImage, palette);
-
         Map<Integer, Integer> counts = getPixelCounts(processedImage);
         palette.sort((c1, c2) -> counts.getOrDefault(c2.getRGB(), 0).compareTo(counts.getOrDefault(c1.getRGB(), 0)));
 
@@ -45,7 +38,12 @@ public class VectorizationTask {
 
         if (!removeBackground) {
             Graphics2D g = finalComposite.createGraphics();
-            g.setColor(palette.get(0));
+            // ถ้ารับสีมาจาก UI ให้ใช้สีนั้น ถ้าไม่มีให้ใช้สีเดิมจาก K-Means
+            if (userHexColors != null && !userHexColors.isEmpty()) {
+                g.setColor(Color.decode(userHexColors.get(0)));
+            } else {
+                g.setColor(palette.get(0));
+            }
             g.fillRect(0, 0, width, height);
             g.dispose();
         }
@@ -53,6 +51,12 @@ public class VectorizationTask {
         for (int i = 1; i < palette.size(); i++) {
             Color color = palette.get(i);
             int colorRgb = color.getRGB();
+
+            // สีที่ทาในรูป PNG ให้ดึงมาจาก userHexColors ถ้ามี
+            int targetDrawColorRgb = colorRgb;
+            if (userHexColors != null && userHexColors.size() > i) {
+                targetDrawColorRgb = Color.decode(userHexColors.get(i)).getRGB();
+            }
 
             BufferedImage layerMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
             for (int y = 0; y < height; y++) {
@@ -82,12 +86,11 @@ public class VectorizationTask {
 
             if (layerPgm.exists()) {
                 BufferedImage pgmLayer = readPGM(layerPgm);
-
                 for (int y = 0; y < height; y++) {
                     for (int x = 0; x < width; x++) {
                         int pixelVal = pgmLayer.getRGB(x, y) & 0xFF;
                         if (pixelVal < 128) {
-                            finalComposite.setRGB(x, y, (0xFF << 24) | (colorRgb & 0xFFFFFF));
+                            finalComposite.setRGB(x, y, (0xFF << 24) | (targetDrawColorRgb & 0xFFFFFF));
                         }
                     }
                 }
@@ -97,13 +100,15 @@ public class VectorizationTask {
 
         ImageIO.write(finalComposite, "png", outputPreviewPng);
         outputPreviewPng.deleteOnExit();
-        return outputPreviewPng;
+
+        // คืนค่าไฟล์รูป พร้อมรายการสีต้นฉบับ
+        return new Object[]{outputPreviewPng, palette};
     }
 
     /**
      * Exports valid multi-layer SVG vector file using Potrace native SVG generation.
      */
-    public static boolean exportToSvg(File inputFile, String detailLevel, int colorCount, boolean removeBackground, File outputSvgFile) throws Exception {
+    public static boolean exportToSvg(File inputFile, String detailLevel, int colorCount, boolean removeBackground, List<String> userHexColors,File outputSvgFile) throws Exception {
         File potraceBinary = resolvePotraceBinary();
         if (potraceBinary == null) {
             throw new FileNotFoundException("Potrace executable not found.");
@@ -132,14 +137,19 @@ public class VectorizationTask {
 
         if (!removeBackground) {
             Color bgColor = palette.get(0);
-            String hexColor = String.format("#%02x%02x%02x", bgColor.getRed(), bgColor.getGreen(), bgColor.getBlue());
+            String hexColor = (userHexColors != null && !userHexColors.isEmpty())
+                    ? userHexColors.get(0)
+                    : String.format("#%02x%02x%02x", bgColor.getRed(), bgColor.getGreen(), bgColor.getBlue());
             svgBuilder.append(String.format("  <rect width=\"100%%\" height=\"100%%\" fill=\"%s\"/>\n", hexColor));
         }
 
         for (int i = 1; i < palette.size(); i++) {
             Color color = palette.get(i);
             int colorRgb = color.getRGB();
-            String hexColor = String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+            String hexColor = (userHexColors != null && userHexColors.size() > i)
+                    ? userHexColors.get(i)
+                    : String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
+            // โค้ดสร้างไฟล์ Potrace และเขียน String ทับสี SVG เหมือนเดิม...
 
             BufferedImage layerMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
             for (int y = 0; y < height; y++) {
@@ -349,7 +359,9 @@ public class VectorizationTask {
 
             int offset = 0;
             while (offset < pixels.length) {
+                // แก้ไขบรรทัดนี้ให้ถูกต้อง (เอาขีดลบด้านหน้าออก และใส่ลบตรงกลาง)
                 int read = in.read(pixels, offset, pixels.length - offset);
+
                 if (read == -1) break;
                 offset += read;
             }

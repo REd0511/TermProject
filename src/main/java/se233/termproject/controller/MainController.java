@@ -52,6 +52,12 @@ public class MainController {
 
     @FXML private CheckBox removeBackgroundCheck;
 
+    @FXML private VBox colorPaletteContainer;
+    @FXML private javafx.scene.layout.FlowPane colorPaletteFlow;
+
+    private List<String> customHexColors = null;
+    private boolean isUpdatingPalette = false;
+
     @FXML private Button backBtn;
     @FXML private Button nextBtn;
     @FXML private ProgressBar exportProgressBar;
@@ -92,6 +98,15 @@ public class MainController {
 
         if (removeBackgroundCheck != null) {
             removeBackgroundCheck.selectedProperty().addListener((obs, oldVal, newVal) -> triggerVectorization());
+        }
+
+        if (customColorRadio != null) {
+            customColorRadio.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                if (colorPaletteContainer != null) {
+                    colorPaletteContainer.setVisible(newVal);
+                    colorPaletteContainer.setManaged(newVal);
+                }
+            });
         }
 
         setupDragAndDrop(initialDropZoneVBox);
@@ -235,7 +250,7 @@ public class MainController {
                         counter++;
                     }
 
-                    VectorizationTask.exportToSvg(src, selectedDetailLevel, finalColorCount, removeBg, targetSvg);
+                    VectorizationTask.exportToSvg(src, selectedDetailLevel, finalColorCount, removeBg, customHexColors, targetSvg);
 
                 } catch (Exception e) {
                     Platform.runLater(() -> showError("Export Failed", "Error exporting " + src.getName()));
@@ -288,21 +303,29 @@ public class MainController {
 
         boolean removeBg = (removeBackgroundCheck != null && removeBackgroundCheck.isSelected());
         int finalColorCount = colorCount;
+        List<String> userColors = customHexColors;
 
-        Task<File> previewTask = new Task<>() {
+        // แก้ไข Task<File> เป็น Task<Object[]> ทั้งหมด
+        Task<Object[]> previewTask = new Task<Object[]>() {
             @Override
-            protected File call() throws Exception {
-                return VectorizationTask.vectorize(sourceFile, selectedDetailLevel, finalColorCount, removeBg);
+            protected Object[] call() throws Exception {
+                return VectorizationTask.vectorizeAndGetPalette(sourceFile, selectedDetailLevel, finalColorCount, removeBg, userColors);
             }
         };
 
         previewTask.setOnSucceeded(e -> {
-            File vectorFile = previewTask.getValue();
+            Object[] result = previewTask.getValue();
+            File vectorFile = (File) result[0];
+
+            @SuppressWarnings("unchecked")
+            List<java.awt.Color> palette = (List<java.awt.Color>) result[1];
+
             if (vectorFile != null && vectorFile.exists() && vectorizedImageView != null) {
                 vectorizedImageView.setImage(null);
                 Image vectorPreview = new Image(vectorFile.toURI().toString(), false);
                 vectorizedImageView.setImage(vectorPreview);
             }
+            updateColorPaletteUI(palette);
         });
 
         previewTask.setOnFailed(e -> {
@@ -434,5 +457,46 @@ public class MainController {
             alert.setContentText(content);
             alert.showAndWait();
         });
+    }
+
+    private void updateColorPaletteUI(List<java.awt.Color> extractedPalette) {
+        if (isUpdatingPalette || colorPaletteFlow == null) return;
+        isUpdatingPalette = true;
+
+        colorPaletteFlow.getChildren().clear();
+
+        // Keep original colors unless user edited.
+        if (customHexColors == null || customHexColors.size() != extractedPalette.size()) {
+            customHexColors = new ArrayList<>();
+            for (java.awt.Color c : extractedPalette) {
+                customHexColors.add(String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue()));
+            }
+        }
+
+        for (int i = 0; i < customHexColors.size(); i++) {
+            final int index = i;
+            String hex = customHexColors.get(i);
+
+            ColorPicker picker = new ColorPicker(javafx.scene.paint.Color.web(hex));
+            picker.setStyle("-fx-color-label-visible: false; -fx-pref-width: 40px;");
+
+            picker.setOnAction(event -> {
+                javafx.scene.paint.Color fxColor = picker.getValue();
+                String newHex = String.format("#%02x%02x%02x",
+                        (int)(fxColor.getRed()*255), (int)(fxColor.getGreen()*255), (int)(fxColor.getBlue()*255));
+
+                customHexColors.set(index, newHex);
+                triggerVectorization(); // สั่งเวกเตอร์ใหม่ทันทีที่เปลี่ยนสี
+            });
+            colorPaletteFlow.getChildren().add(picker);
+        }
+
+        // Force to display colorPalette
+        if (customColorRadio != null && customColorRadio.isSelected()) {
+            colorPaletteContainer.setVisible(true);
+            colorPaletteContainer.setManaged(true);
+        }
+
+        isUpdatingPalette = false;
     }
 }

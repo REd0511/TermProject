@@ -108,6 +108,13 @@
                     </HBox>
                     <ChoiceBox fx:id="customColorBox" prefWidth="80.0" />
 
+                    <!-- Interactive Color Palette -->
+                    <VBox fx:id="colorPaletteContainer" spacing="5.0" managed="false" visible="false">
+                        <VBox.margin><Insets top="10.0" /></VBox.margin>
+                        <Label text="Adjust Palette" style="-fx-font-size: 12px; -fx-text-fill: #555555;"/>
+                        <FlowPane fx:id="colorPaletteFlow" hgap="5.0" vgap="5.0" />
+                    </VBox>
+
                     <!-- Advanced Section -->
                     <Label text="Advanced">
                         <font><Font name="System Bold" size="14.0" /></font>
