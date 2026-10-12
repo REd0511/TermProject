@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
-<?import javafx.scene.control.*?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ChoiceBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressBar?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.SplitPane?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.control.ToolBar?>
 <?import javafx.scene.image.ImageView?>
-<?import javafx.scene.layout.*?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<StackPane prefHeight="800.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="se233.termproject.controller.MainController">
+<StackPane prefHeight="800.0" prefWidth="1200.0" xmlns="http://javafx.com/javafx/26" xmlns:fx="http://javafx.com/fxml/1" fx:controller="se233.termproject.controller.MainController">
 
     <!-- Layer 1: The Main Editor (Hidden initially) -->
     <BorderPane fx:id="mainEditorPane" visible="false">
@@ -14,9 +28,9 @@
         <top>
             <ToolBar prefHeight="40.0" prefWidth="200.0" BorderPane.alignment="CENTER">
                 <items>
-                    <Button fx:id="zoomInBtn" text="Zoom In" onAction="#handleZoomIn"/>
-                    <Button fx:id="zoomOutBtn" text="Zoom Out" onAction="#handleZoomOut"/>
-                    <Button fx:id="zoomFitBtn" text="Zoom to Fit" onAction="#handleZoomToFit"/>
+                    <Button fx:id="zoomInBtn" onAction="#handleZoomIn" text="Zoom In" />
+                    <Button fx:id="zoomOutBtn" onAction="#handleZoomOut" text="Zoom Out" />
+                    <Button fx:id="zoomFitBtn" onAction="#handleZoomToFit" text="Zoom to Fit" />
                 </items>
             </ToolBar>
         </top>
@@ -67,12 +81,7 @@
                 </padding>
                 <children>
                     <!-- Connected handleExportAll method to Download Result button -->
-                    <Button fx:id="exportAllBtn"
-                            maxWidth="1.7976931348623157E308"
-                            prefHeight="45.0"
-                            onAction="#handleExportAll"
-                            style="-fx-background-color: #337ab7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;"
-                            text="Download Result" />
+                    <Button fx:id="exportAllBtn" maxWidth="1.7976931348623157E308" onAction="#handleExportAll" prefHeight="45.0" style="-fx-background-color: #337ab7; -fx-text-fill: white; -fx-font-weight: bold; -fx-font-size: 14px;" text="Download Result" />
 
                     <Label text="Improve result">
                         <font><Font name="System Bold" size="16.0" /></font>
@@ -81,15 +90,18 @@
 
                     <!-- Detail Level Selection -->
                     <VBox spacing="5.0">
-                        <Label text="Detail level" style="-fx-font-weight: bold;"/>
+                        <Label style="-fx-font-weight: bold;" text="Detail level" />
                         <HBox spacing="5.0">
                             <fx:define>
-                                <ToggleGroup fx:id="detailGroup"/>
+                                <ToggleGroup fx:id="detailGroup" />
                             </fx:define>
 
-                            <ToggleButton fx:id="detailLowBtn" text="Low" toggleGroup="$detailGroup"/>
-                            <ToggleButton fx:id="detailMedBtn" text="Medium" toggleGroup="$detailGroup" selected="true"/>
-                            <ToggleButton fx:id="detailHighBtn" text="High" toggleGroup="$detailGroup"/>
+                            <ToggleButton fx:id="detailLowBtn" text="Low">
+                        <toggleGroup>
+                           <ToggleGroup fx:id="detailGroup" />
+                        </toggleGroup></ToggleButton>
+                            <ToggleButton fx:id="detailMedBtn" selected="true" text="Medium" toggleGroup="$detailGroup" />
+                            <ToggleButton fx:id="detailHighBtn" text="High" toggleGroup="$detailGroup" />
                         </HBox>
                     </VBox>
 
@@ -103,19 +115,19 @@
                                 <toggleGroup><ToggleGroup fx:id="colorGroup" /></toggleGroup>
                             </RadioButton>
                             <!-- Custom is selected by default per project specification -->
-                            <RadioButton fx:id="customColorRadio" text="Custom" toggleGroup="$colorGroup" selected="true" />
+                            <RadioButton fx:id="customColorRadio" selected="true" text="Custom" toggleGroup="$colorGroup" />
                         </children>
                     </HBox>
                     <ChoiceBox fx:id="customColorBox" prefWidth="80.0" />
 
                     <!-- Interactive Color Palette -->
-                    <VBox fx:id="colorPaletteContainer" spacing="5.0" managed="false" visible="false">
+                    <VBox fx:id="colorPaletteContainer" managed="false" spacing="5.0" visible="false">
                         <VBox.margin><Insets top="10.0" /></VBox.margin>
 
                         <!-- Add Reset Button -->
                         <HBox alignment="CENTER_LEFT" spacing="10.0">
-                            <Label text="Adjust Palette" style="-fx-font-size: 12px; -fx-text-fill: #555555;"/>
-                            <Button text="Reset" onAction="#handleResetColors" style="-fx-font-size: 10px; -fx-padding: 2 6 2 6; -fx-background-color: #e0e0e0; -fx-cursor: hand;" />
+                            <Label style="-fx-font-size: 12px; -fx-text-fill: #555555;" text="Adjust Palette" />
+                            <Button onAction="#handleResetColors" style="-fx-font-size: 10px; -fx-padding: 2 6 2 6; -fx-background-color: #e0e0e0; -fx-cursor: hand;" text="Reset" />
                         </HBox>
 
                         <FlowPane fx:id="colorPaletteFlow" hgap="5.0" vgap="5.0" />
@@ -134,8 +146,8 @@
                     <!-- Navigation & Progress -->
                     <HBox alignment="CENTER" spacing="10.0">
                         <children>
-                            <Button fx:id="backBtn" text="&lt; Back" onAction="#handleBack"/>
-                            <Button fx:id="nextBtn" text="Next &gt;" onAction="#handleNext"/>
+                            <Button fx:id="backBtn" onAction="#handleBack" text="&lt; Back" />
+                            <Button fx:id="nextBtn" onAction="#handleNext" text="Next &gt;" />
                         </children>
                     </HBox>
                     <ProgressBar fx:id="exportProgressBar" maxWidth="1.7976931348623157E308" progress="0.0" />
@@ -162,6 +174,7 @@
                             <Insets top="10.0" />
                         </VBox.margin>
                     </Label>
+               <Label text="Supported formats: JPG, PNG, ZIP" textFill="#aca6a6" />
                 </children>
             </VBox>
         </children>
