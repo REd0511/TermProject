@@ -305,7 +305,7 @@ public class MainController {
         int finalColorCount = colorCount;
         List<String> userColors = customHexColors;
 
-        // แก้ไข Task<File> เป็น Task<Object[]> ทั้งหมด
+        // Task<File> >> Task<Object[]>
         Task<Object[]> previewTask = new Task<Object[]>() {
             @Override
             protected Object[] call() throws Exception {
@@ -498,5 +498,11 @@ public class MainController {
         }
 
         isUpdatingPalette = false;
+    }
+
+    @FXML
+    private void handleResetColors() {
+        customHexColors = null;
+        triggerVectorization();
     }
 }
