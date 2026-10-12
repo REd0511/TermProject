@@ -35,7 +35,7 @@
                             <ImageView fx:id="originalImageView" fitHeight="400.0" fitWidth="400.0" preserveRatio="true" BorderPane.alignment="CENTER" />
                         </center>
                         <bottom>
-                            <Label text="Waiting for image..." BorderPane.alignment="CENTER">
+                            <Label fx:id="originalNameLabel" text="Waiting for image..." BorderPane.alignment="CENTER">
                                 <padding><Insets bottom="10.0" /></padding>
                             </Label>
                         </bottom>
@@ -50,7 +50,7 @@
                             <ImageView fx:id="vectorizedImageView" fitHeight="400.0" fitWidth="400.0" preserveRatio="true" BorderPane.alignment="CENTER" />
                         </center>
                         <bottom>
-                            <Label text="Ready to process" BorderPane.alignment="CENTER">
+                            <Label fx:id="vectorStatusLabel" text="Ready to process" BorderPane.alignment="CENTER">
                                 <padding><Insets bottom="10.0" /></padding>
                             </Label>
                         </bottom>

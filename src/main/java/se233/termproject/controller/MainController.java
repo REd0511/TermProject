@@ -34,6 +34,9 @@ public class MainController {
     @FXML private ImageView originalImageView;
     @FXML private ImageView vectorizedImageView;
 
+    @FXML private Label originalNameLabel;
+    @FXML private Label vectorStatusLabel;
+
     @FXML private Button zoomInBtn;
     @FXML private Button zoomOutBtn;
     @FXML private Button zoomFitBtn;
@@ -305,6 +308,7 @@ public class MainController {
         int finalColorCount = colorCount;
         List<String> userColors = customHexColors;
 
+        if (vectorStatusLabel != null) vectorStatusLabel.setText("Processing...");
         // Task<File> >> Task<Object[]>
         Task<Object[]> previewTask = new Task<Object[]>() {
             @Override
@@ -312,6 +316,7 @@ public class MainController {
                 return VectorizationTask.vectorizeAndGetPalette(sourceFile, selectedDetailLevel, finalColorCount, removeBg, userColors);
             }
         };
+
 
         previewTask.setOnSucceeded(e -> {
             Object[] result = previewTask.getValue();
@@ -325,6 +330,7 @@ public class MainController {
                 Image vectorPreview = new Image(vectorFile.toURI().toString(), false);
                 vectorizedImageView.setImage(vectorPreview);
             }
+            if (vectorStatusLabel != null) vectorStatusLabel.setText("Vectorization Completed");
             updateColorPaletteUI(palette);
         });
 
@@ -344,7 +350,7 @@ public class MainController {
             try {
                 Image image = new Image(currentFile.toURI().toString());
                 if (originalImageView != null) originalImageView.setImage(image);
-
+                if (originalNameLabel != null) originalNameLabel.setText("File: " + currentFile.getName());
                 updateColorLimitsForImage(currentFile);
                 runVectorizationPreview(currentFile);
                 updateNavigationButtons();
