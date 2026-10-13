@@ -28,19 +28,23 @@ public class VectorizationTask {
         String[] potraceArgs = getPotraceArgs(detailLevel);
         File outputPreviewPng = File.createTempFile("vector_preview_", ".png");
 
-        int targetK = (colorCount > 0) ? colorCount : 12;
+        // JPEG compression creates many near-duplicate edge colors. Five clusters
+        // preserve the artwork's dominant palette without tracing compression speckles.
+        int targetK = (colorCount > 0) ? colorCount : 5;
         List<Color> palette = extractKMeansPalette(bufferedImage, targetK);
         BufferedImage processedImage = quantizeToPalette(bufferedImage, palette);
         Map<Integer, Integer> counts = getPixelCounts(processedImage);
         palette.sort((c1, c2) -> counts.getOrDefault(c2.getRGB(), 0).compareTo(counts.getOrDefault(c1.getRGB(), 0)));
+        List<String> effectiveUserColors = colorCount > 0 && userHexColors != null
+                && userHexColors.size() == palette.size() ? userHexColors : null;
 
         BufferedImage finalComposite = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
 
         if (!removeBackground) {
             Graphics2D g = finalComposite.createGraphics();
             // ถ้ารับสีมาจาก UI ให้ใช้สีนั้น ถ้าไม่มีให้ใช้สีเดิมจาก K-Means
-            if (userHexColors != null && !userHexColors.isEmpty()) {
-                g.setColor(Color.decode(userHexColors.get(0)));
+            if (effectiveUserColors != null && !effectiveUserColors.isEmpty()) {
+                g.setColor(Color.decode(effectiveUserColors.get(0)));
             } else {
                 g.setColor(palette.get(0));
             }
@@ -54,8 +58,8 @@ public class VectorizationTask {
 
             // สีที่ทาในรูป PNG ให้ดึงมาจาก userHexColors ถ้ามี
             int targetDrawColorRgb = colorRgb;
-            if (userHexColors != null && userHexColors.size() > i) {
-                targetDrawColorRgb = Color.decode(userHexColors.get(i)).getRGB();
+            if (effectiveUserColors != null) {
+                targetDrawColorRgb = Color.decode(effectiveUserColors.get(i)).getRGB();
             }
 
             BufferedImage layerMask = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_BINARY);
@@ -123,12 +127,14 @@ public class VectorizationTask {
 
         String[] potraceArgs = getPotraceArgs(detailLevel);
 
-        int targetK = (colorCount > 0) ? colorCount : 12;
+        int targetK = (colorCount > 0) ? colorCount : 5;
         List<Color> palette = extractKMeansPalette(bufferedImage, targetK);
         BufferedImage processedImage = quantizeToPalette(bufferedImage, palette);
 
         Map<Integer, Integer> counts = getPixelCounts(processedImage);
         palette.sort((c1, c2) -> counts.getOrDefault(c2.getRGB(), 0).compareTo(counts.getOrDefault(c1.getRGB(), 0)));
+        List<String> effectiveUserColors = colorCount > 0 && userHexColors != null
+                && userHexColors.size() == palette.size() ? userHexColors : null;
 
         StringBuilder svgBuilder = new StringBuilder();
         svgBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"no\"?>\n");
@@ -137,8 +143,8 @@ public class VectorizationTask {
 
         if (!removeBackground) {
             Color bgColor = palette.get(0);
-            String hexColor = (userHexColors != null && !userHexColors.isEmpty())
-                    ? userHexColors.get(0)
+            String hexColor = (effectiveUserColors != null && !effectiveUserColors.isEmpty())
+                    ? effectiveUserColors.get(0)
                     : String.format("#%02x%02x%02x", bgColor.getRed(), bgColor.getGreen(), bgColor.getBlue());
             svgBuilder.append(String.format("  <rect width=\"100%%\" height=\"100%%\" fill=\"%s\"/>\n", hexColor));
         }
@@ -146,8 +152,8 @@ public class VectorizationTask {
         for (int i = 1; i < palette.size(); i++) {
             Color color = palette.get(i);
             int colorRgb = color.getRGB();
-            String hexColor = (userHexColors != null && userHexColors.size() > i)
-                    ? userHexColors.get(i)
+            String hexColor = (effectiveUserColors != null)
+                    ? effectiveUserColors.get(i)
                     : String.format("#%02x%02x%02x", color.getRed(), color.getGreen(), color.getBlue());
             // โค้ดสร้างไฟล์ Potrace และเขียน String ทับสี SVG เหมือนเดิม...
 
@@ -243,13 +249,28 @@ public class VectorizationTask {
             return exactPalette;
         }
 
+        // Seed with visually distinct colors. Sampling consecutive pixels can
+        // select only the white background and merge orange/black into brown.
         List<Color> centroids = new ArrayList<>();
-        int stride = Math.max(1, pixels.size() / maxColors);
-        for (int i = 0; i < maxColors && (i * stride) < pixels.size(); i++) {
-            centroids.add(pixels.get(i * stride));
+        centroids.add(pixels.get(0));
+        while (centroids.size() < maxColors) {
+            Color farthest = null;
+            double farthestDistance = -1;
+            for (Color pixel : pixels) {
+                double nearestDistance = Double.MAX_VALUE;
+                for (Color centroid : centroids) {
+                    nearestDistance = Math.min(nearestDistance, colorDistance(pixel, centroid));
+                }
+                if (nearestDistance > farthestDistance) {
+                    farthestDistance = nearestDistance;
+                    farthest = pixel;
+                }
+            }
+            if (farthest == null || farthestDistance == 0) break;
+            centroids.add(farthest);
         }
 
-        for (int iter = 0; iter < 6; iter++) {
+        for (int iter = 0; iter < 12; iter++) {
             List<List<Color>> clusters = new ArrayList<>();
             for (int i = 0; i < centroids.size(); i++) clusters.add(new ArrayList<>());
 

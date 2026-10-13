@@ -231,6 +231,8 @@ public class MainController {
         }
         boolean removeBg = (removeBackgroundCheck != null && removeBackgroundCheck.isSelected());
         int finalColorCount = colorCount;
+        List<String> exportUserColors = finalColorCount > 0 && customHexColors != null
+                ? new ArrayList<>(customHexColors) : null;
 
         setControlsDisabled(true);
 
@@ -253,7 +255,7 @@ public class MainController {
                         counter++;
                     }
 
-                    VectorizationTask.exportToSvg(src, selectedDetailLevel, finalColorCount, removeBg, customHexColors, targetSvg);
+                    VectorizationTask.exportToSvg(src, selectedDetailLevel, finalColorCount, removeBg, exportUserColors, targetSvg);
 
                 } catch (Exception e) {
                     Platform.runLater(() -> showError("Export Failed", "Error exporting " + src.getName()));
@@ -306,7 +308,8 @@ public class MainController {
 
         boolean removeBg = (removeBackgroundCheck != null && removeBackgroundCheck.isSelected());
         int finalColorCount = colorCount;
-        List<String> userColors = customHexColors;
+        List<String> userColors = finalColorCount > 0 && customHexColors != null
+                ? new ArrayList<>(customHexColors) : null;
 
         if (vectorStatusLabel != null) vectorStatusLabel.setText("Processing...");
         // Task<File> >> Task<Object[]>
