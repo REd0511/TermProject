@@ -14,6 +14,9 @@ import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 
+import se233.termproject.model.ExportSettings;
+import se233.termproject.model.ImageModel;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -30,67 +33,52 @@ public class MainController {
 
     @FXML private BorderPane mainEditorPane;
     @FXML private VBox initialDropZoneVBox;
-
     @FXML private ImageView originalImageView;
     @FXML private ImageView vectorizedImageView;
-
     @FXML private Label originalNameLabel;
     @FXML private Label vectorStatusLabel;
-
     @FXML private Button zoomInBtn;
     @FXML private Button zoomOutBtn;
     @FXML private Button zoomFitBtn;
-
     @FXML private Button exportAllBtn;
-
     @FXML private ToggleGroup detailGroup;
     @FXML private ToggleButton detailLowBtn;
     @FXML private ToggleButton detailMedBtn;
     @FXML private ToggleButton detailHighBtn;
-
     @FXML private ToggleGroup colorGroup;
     @FXML private RadioButton unlimitedColorRadio;
     @FXML private RadioButton customColorRadio;
     @FXML private ChoiceBox<Integer> customColorBox;
-
     @FXML private CheckBox removeBackgroundCheck;
-
     @FXML private VBox colorPaletteContainer;
     @FXML private javafx.scene.layout.FlowPane colorPaletteFlow;
-
-    private List<String> customHexColors = null;
-    private boolean isUpdatingPalette = false;
-
     @FXML private Button backBtn;
     @FXML private Button nextBtn;
     @FXML private ProgressBar exportProgressBar;
 
-    @FXML private List<File> uploadedFiles = new ArrayList<>();
-    @FXML private int currentFileIndex = 0;
+    // --- เชื่อมต่อกับ Model ---
+    private ImageModel imageModel = new ImageModel();
+    private ExportSettings settings = new ExportSettings();
 
+    private boolean isUpdatingPalette = false;
     private double currentScale = 1.0;
     private static final double ZOOM_STEP = 0.25;
     private static final double MIN_SCALE = 0.25;
     private static final double MAX_SCALE = 5.0;
-
-    private String selectedDetailLevel = "MEDIUM";
 
     @FXML
     public void initialize() {
         if (customColorBox != null && customColorRadio != null) {
             customColorBox.disableProperty().bind(customColorRadio.selectedProperty().not());
         }
-
         if (detailGroup != null) {
             detailGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal != null) handleDetailChange();
             });
         }
-
         if (colorGroup != null) {
             colorGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> triggerVectorization());
         }
-
         if (customColorBox != null) {
             customColorBox.valueProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal != null && customColorRadio != null && customColorRadio.isSelected()) {
@@ -98,11 +86,9 @@ public class MainController {
                 }
             });
         }
-
         if (removeBackgroundCheck != null) {
             removeBackgroundCheck.selectedProperty().addListener((obs, oldVal, newVal) -> triggerVectorization());
         }
-
         if (customColorRadio != null) {
             customColorRadio.selectedProperty().addListener((obs, oldVal, newVal) -> {
                 if (colorPaletteContainer != null) {
@@ -111,29 +97,24 @@ public class MainController {
                 }
             });
         }
-
         setupDragAndDrop(initialDropZoneVBox);
         setupDragAndDrop(mainEditorPane);
     }
 
     private void setupDragAndDrop(javafx.scene.Node node) {
         if (node == null) return;
-
         node.setOnDragOver(event -> {
             if (event.getDragboard().hasFiles()) {
                 event.acceptTransferModes(TransferMode.COPY);
             }
             event.consume();
         });
-
         node.setOnDragDropped(event -> {
             Dragboard db = event.getDragboard();
             boolean success = false;
-
             if (db.hasFiles()) {
                 success = true;
                 List<File> acceptedFiles = new ArrayList<>();
-
                 for (File file : db.getFiles()) {
                     String fileName = file.getName().toLowerCase();
                     if (fileName.endsWith(".png") || fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
@@ -146,14 +127,12 @@ public class MainController {
                         }
                     }
                 }
-
                 if (!acceptedFiles.isEmpty()) {
                     handleNewFiles(acceptedFiles);
                 } else {
                     showWarning("Unsupported Format", "Please drag JPG, PNG, or ZIP files.");
                 }
             }
-
             event.setDropCompleted(success);
             event.consume();
         });
@@ -161,25 +140,23 @@ public class MainController {
 
     @FXML
     private void handleNext() {
-        if (uploadedFiles != null && currentFileIndex < uploadedFiles.size() - 1) {
-            currentFileIndex++;
+        if (imageModel.hasNext()) {
+            imageModel.next();
             displayCurrentImage();
         }
     }
 
     @FXML
     private void handleBack() {
-        if (uploadedFiles != null && currentFileIndex > 0) {
-            currentFileIndex--;
+        if (imageModel.hasPrevious()) {
+            imageModel.previous();
             displayCurrentImage();
         }
     }
 
     private void handleNewFiles(List<File> files) {
-        this.uploadedFiles = files;
-        this.currentFileIndex = 0;
+        imageModel.setFiles(files);
         showMainEditor();
-
         displayCurrentImage();
 
         int threadCount = Math.min(Runtime.getRuntime().availableProcessors(), files.size());
@@ -193,18 +170,14 @@ public class MainController {
             executor.submit(() -> {
                 try {
                     BufferedImage img = ImageIO.read(file);
-                    if (img != null) {
-                        countUniqueColors(img);
-                    }
+                    if (img != null) countUniqueColors(img);
                 } catch (Exception ignored) {}
 
                 int done = completed.incrementAndGet();
                 Platform.runLater(() -> {
                     if (exportProgressBar != null) {
                         exportProgressBar.setProgress((double) done / total);
-                        if (done == total) {
-                            exportProgressBar.setProgress(0.0);
-                        }
+                        if (done == total) exportProgressBar.setProgress(0.0);
                     }
                 });
             });
@@ -214,7 +187,7 @@ public class MainController {
 
     @FXML
     private void handleExportAll() {
-        if (uploadedFiles == null || uploadedFiles.isEmpty()) {
+        if (imageModel.isEmpty()) {
             showWarning("No Images Loaded", "Please upload image files before exporting.");
             return;
         }
@@ -225,25 +198,17 @@ public class MainController {
 
         if (selectedDir == null) return;
 
-        int colorCount = 0;
-        if (customColorRadio != null && customColorRadio.isSelected() && customColorBox != null && customColorBox.getValue() != null) {
-            colorCount = customColorBox.getValue();
-        }
-        boolean removeBg = (removeBackgroundCheck != null && removeBackgroundCheck.isSelected());
-        int finalColorCount = colorCount;
-        List<String> exportUserColors = finalColorCount > 0 && customHexColors != null
-                ? new ArrayList<>(customHexColors) : null;
-
+        syncSettingsFromUI();
         setControlsDisabled(true);
 
-        int numThreads = Math.min(Runtime.getRuntime().availableProcessors(), uploadedFiles.size());
+        int numThreads = Math.min(Runtime.getRuntime().availableProcessors(), imageModel.getSize());
         ExecutorService executor = Executors.newFixedThreadPool(numThreads);
         AtomicInteger completedTasks = new AtomicInteger(0);
-        int totalFiles = uploadedFiles.size();
+        int totalFiles = imageModel.getSize();
 
         if (exportProgressBar != null) exportProgressBar.setProgress(0.0);
 
-        for (File src : uploadedFiles) {
+        for (File src : imageModel.getUploadedFiles()) {
             executor.submit(() -> {
                 try {
                     String baseName = src.getName().replaceAll("(?i)\\.(png|jpg|jpeg)$", "");
@@ -255,16 +220,17 @@ public class MainController {
                         counter++;
                     }
 
-                    VectorizationTask.exportToSvg(src, selectedDetailLevel, finalColorCount, removeBg, exportUserColors, targetSvg);
+                    List<String> exportUserColors = settings.getColorCount() > 0 && settings.getCustomHexColors() != null
+                            ? new ArrayList<>(settings.getCustomHexColors()) : null;
+
+                    VectorizationTask.exportToSvg(src, settings.getDetailLevel(), settings.getColorCount(), settings.isRemoveBackground(), exportUserColors, targetSvg);
 
                 } catch (Exception e) {
                     Platform.runLater(() -> showError("Export Failed", "Error exporting " + src.getName()));
                 } finally {
                     int done = completedTasks.incrementAndGet();
                     Platform.runLater(() -> {
-                        if (exportProgressBar != null) {
-                            exportProgressBar.setProgress((double) done / totalFiles);
-                        }
+                        if (exportProgressBar != null) exportProgressBar.setProgress((double) done / totalFiles);
                         if (done == totalFiles) {
                             setControlsDisabled(false);
                             showInfo("Export Complete", "Successfully exported " + totalFiles + " SVG vector file(s) to:\n" + selectedDir.getAbsolutePath());
@@ -278,48 +244,46 @@ public class MainController {
 
     @FXML
     private void handleDetailChange() {
-        if (detailLowBtn != null && detailLowBtn.isSelected()) {
-            selectedDetailLevel = "LOW";
-        } else if (detailHighBtn != null && detailHighBtn.isSelected()) {
-            selectedDetailLevel = "HIGH";
-        } else {
-            selectedDetailLevel = "MEDIUM";
-        }
+        if (detailLowBtn != null && detailLowBtn.isSelected()) settings.setDetailLevel("LOW");
+        else if (detailHighBtn != null && detailHighBtn.isSelected()) settings.setDetailLevel("HIGH");
+        else settings.setDetailLevel("MEDIUM");
+
         triggerVectorization();
     }
 
     private void updateNavigationButtons() {
-        if (backBtn != null) backBtn.setDisable(currentFileIndex <= 0);
-        if (nextBtn != null) nextBtn.setDisable(uploadedFiles == null || currentFileIndex >= uploadedFiles.size() - 1);
+        if (backBtn != null) backBtn.setDisable(!imageModel.hasPrevious());
+        if (nextBtn != null) nextBtn.setDisable(!imageModel.hasNext());
+    }
+
+    private void syncSettingsFromUI() {
+        if (customColorRadio != null && customColorRadio.isSelected() && customColorBox != null && customColorBox.getValue() != null) {
+            settings.setColorCount(customColorBox.getValue());
+        } else {
+            settings.setColorCount(0);
+        }
+        settings.setRemoveBackground(removeBackgroundCheck != null && removeBackgroundCheck.isSelected());
     }
 
     private void triggerVectorization() {
-        if (uploadedFiles != null && !uploadedFiles.isEmpty()) {
-            File currentFile = uploadedFiles.get(currentFileIndex);
-            runVectorizationPreview(currentFile);
+        if (!imageModel.isEmpty()) {
+            runVectorizationPreview(imageModel.getCurrentFile());
         }
     }
 
     private void runVectorizationPreview(File sourceFile) {
-        int colorCount = 0;
-        if (customColorRadio != null && customColorRadio.isSelected() && customColorBox != null && customColorBox.getValue() != null) {
-            colorCount = customColorBox.getValue();
-        }
-
-        boolean removeBg = (removeBackgroundCheck != null && removeBackgroundCheck.isSelected());
-        int finalColorCount = colorCount;
-        List<String> userColors = finalColorCount > 0 && customHexColors != null
-                ? new ArrayList<>(customHexColors) : null;
+        syncSettingsFromUI();
+        List<String> userColors = settings.getColorCount() > 0 && settings.getCustomHexColors() != null
+                ? new ArrayList<>(settings.getCustomHexColors()) : null;
 
         if (vectorStatusLabel != null) vectorStatusLabel.setText("Processing...");
-        // Task<File> >> Task<Object[]>
+
         Task<Object[]> previewTask = new Task<Object[]>() {
             @Override
             protected Object[] call() throws Exception {
-                return VectorizationTask.vectorizeAndGetPalette(sourceFile, selectedDetailLevel, finalColorCount, removeBg, userColors);
+                return VectorizationTask.vectorizeAndGetPalette(sourceFile, settings.getDetailLevel(), settings.getColorCount(), settings.isRemoveBackground(), userColors);
             }
         };
-
 
         previewTask.setOnSucceeded(e -> {
             Object[] result = previewTask.getValue();
@@ -346,10 +310,9 @@ public class MainController {
     }
 
     private void displayCurrentImage() {
-        if (uploadedFiles != null && !uploadedFiles.isEmpty()) {
+        if (!imageModel.isEmpty()) {
             handleZoomToFit();
-            File currentFile = uploadedFiles.get(currentFileIndex);
-
+            File currentFile = imageModel.getCurrentFile();
             try {
                 Image image = new Image(currentFile.toURI().toString());
                 if (originalImageView != null) originalImageView.setImage(image);
@@ -367,19 +330,14 @@ public class MainController {
         try {
             BufferedImage bufferedImage = ImageIO.read(imageFile);
             if (bufferedImage == null || customColorBox == null) return;
-
             int detectedColorCount = countUniqueColors(bufferedImage);
             int maxColors = Math.min(Math.max(detectedColorCount, 2), 5);
-
             List<Integer> colorOptions = new ArrayList<>();
-            for (int i = 2; i <= maxColors; i++) {
-                colorOptions.add(i);
-            }
+            for (int i = 2; i <= maxColors; i++) colorOptions.add(i);
 
             customColorBox.setItems(FXCollections.observableArrayList(colorOptions));
             customColorBox.setValue(2);
             if (customColorRadio != null) customColorRadio.setSelected(true);
-
         } catch (IOException e) {
             showError("Image Read Error", "Could not read color data for: " + imageFile.getName());
         }
@@ -389,10 +347,8 @@ public class MainController {
         Set<Integer> uniqueColors = new HashSet<>();
         int width = image.getWidth();
         int height = image.getHeight();
-
         int stepX = Math.max(1, width / 150);
         int stepY = Math.max(1, height / 150);
-
         for (int y = 0; y < height; y += stepY) {
             for (int x = 0; x < width; x += stepX) {
                 int rgb = image.getRGB(x, y) & 0xFFFFFF;
@@ -405,8 +361,8 @@ public class MainController {
 
     private void setControlsDisabled(boolean disabled) {
         if (exportAllBtn != null) exportAllBtn.setDisable(disabled);
-        if (backBtn != null) backBtn.setDisable(disabled || currentFileIndex <= 0);
-        if (nextBtn != null) nextBtn.setDisable(disabled || uploadedFiles == null || currentFileIndex >= uploadedFiles.size() - 1);
+        if (backBtn != null) backBtn.setDisable(disabled || !imageModel.hasPrevious());
+        if (nextBtn != null) nextBtn.setDisable(disabled || !imageModel.hasNext());
     }
 
     @FXML private void handleZoomIn() { if (currentScale < MAX_SCALE) { currentScale += ZOOM_STEP; applyZoom(); } }
@@ -428,7 +384,6 @@ public class MainController {
         if (initialDropZoneVBox != null && mainEditorPane != null) {
             initialDropZoneVBox.setVisible(false);
             mainEditorPane.setVisible(true);
-
             Stage stage = (Stage) mainEditorPane.getScene().getWindow();
             if (stage != null) {
                 stage.setWidth(1200);
@@ -471,21 +426,19 @@ public class MainController {
     private void updateColorPaletteUI(List<java.awt.Color> extractedPalette) {
         if (isUpdatingPalette || colorPaletteFlow == null) return;
         isUpdatingPalette = true;
-
         colorPaletteFlow.getChildren().clear();
 
-        // Keep original colors unless user edited.
-        if (customHexColors == null || customHexColors.size() != extractedPalette.size()) {
-            customHexColors = new ArrayList<>();
+        if (settings.getCustomHexColors() == null || settings.getCustomHexColors().size() != extractedPalette.size()) {
+            List<String> newHexList = new ArrayList<>();
             for (java.awt.Color c : extractedPalette) {
-                customHexColors.add(String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue()));
+                newHexList.add(String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue()));
             }
+            settings.setCustomHexColors(newHexList);
         }
 
-        for (int i = 0; i < customHexColors.size(); i++) {
+        for (int i = 0; i < settings.getCustomHexColors().size(); i++) {
             final int index = i;
-            String hex = customHexColors.get(i);
-
+            String hex = settings.getCustomHexColors().get(i);
             ColorPicker picker = new ColorPicker(javafx.scene.paint.Color.web(hex));
             picker.setStyle("-fx-color-label-visible: false; -fx-pref-width: 40px;");
 
@@ -493,25 +446,22 @@ public class MainController {
                 javafx.scene.paint.Color fxColor = picker.getValue();
                 String newHex = String.format("#%02x%02x%02x",
                         (int)(fxColor.getRed()*255), (int)(fxColor.getGreen()*255), (int)(fxColor.getBlue()*255));
-
-                customHexColors.set(index, newHex);
-                triggerVectorization(); // สั่งเวกเตอร์ใหม่ทันทีที่เปลี่ยนสี
+                settings.getCustomHexColors().set(index, newHex);
+                triggerVectorization();
             });
             colorPaletteFlow.getChildren().add(picker);
         }
 
-        // Force to display colorPalette
         if (customColorRadio != null && customColorRadio.isSelected()) {
             colorPaletteContainer.setVisible(true);
             colorPaletteContainer.setManaged(true);
         }
-
         isUpdatingPalette = false;
     }
 
     @FXML
     private void handleResetColors() {
-        customHexColors = null;
+        settings.resetCustomColors();
         triggerVectorization();
     }
 }
