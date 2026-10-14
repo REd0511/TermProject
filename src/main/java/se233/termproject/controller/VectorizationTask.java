@@ -13,9 +13,7 @@ import java.util.regex.Pattern;
 
 public class VectorizationTask {
 
-    /**
-     * Renders a raster preview PNG for JavaFX UI display.
-     */
+    /** Makes the preview image and returns it together with the detected colors. */
     public static Object[] vectorizeAndGetPalette(File inputFile, String detailLevel, int colorCount, boolean removeBackground, List<String> userHexColors) throws Exception {
         File potraceBinary = resolvePotraceBinary();
         if (potraceBinary == null) throw new FileNotFoundException("Potrace binary missing.");
@@ -109,16 +107,14 @@ public class VectorizationTask {
         return new Object[]{outputPreviewPng, palette};
     }
 
-    /**
-     * Exports valid multi-layer SVG vector file using Potrace native SVG generation.
-     */
+    /** Traces the image's color layers and saves them together as an SVG file. */
     public static boolean exportToSvg(File inputFile, String detailLevel, int colorCount, boolean removeBackground, List<String> userHexColors,File outputSvgFile) throws Exception {
         File potraceBinary = resolvePotraceBinary();
         if (potraceBinary == null) {
             throw new FileNotFoundException("Potrace executable not found.");
         }
 
-        BufferedImage rawImage = ImageIO.read(inputFile);
+        BufferedImage rawImage = ImageIO.read(inputFile); //opens the image jpg or png
         if (rawImage == null) throw new IOException("Corrupted image file: " + inputFile.getName());
 
         BufferedImage bufferedImage = flattenToWhite(rawImage);
@@ -209,6 +205,7 @@ public class VectorizationTask {
         return true;
     }
 
+    /** Chooses Potrace settings for Low, Medium, or High detail. */
     private static String[] getPotraceArgs(String detailLevel) {
         String level = (detailLevel != null) ? detailLevel.toUpperCase() : "MEDIUM";
         return switch (level) {
@@ -218,6 +215,7 @@ public class VectorizationTask {
         };
     }
 
+    /** Puts transparent parts of the input image onto a white background for processing. */
     private static BufferedImage flattenToWhite(BufferedImage source) {
         BufferedImage rgbImage = new BufferedImage(source.getWidth(), source.getHeight(), BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = rgbImage.createGraphics();
@@ -228,6 +226,7 @@ public class VectorizationTask {
         return rgbImage;
     }
 
+    /** Samples the image and groups similar pixels into a limited list of main colors. */
     private static List<Color> extractKMeansPalette(BufferedImage img, int maxColors) {
         int width = img.getWidth();
         int height = img.getHeight();
@@ -304,6 +303,7 @@ public class VectorizationTask {
         return centroids;
     }
 
+    /** Replaces each pixel with the closest color from the palette. */
     private static BufferedImage quantizeToPalette(BufferedImage original, List<Color> palette) {
         int width = original.getWidth();
         int height = original.getHeight();
@@ -328,6 +328,7 @@ public class VectorizationTask {
         return result;
     }
 
+    /** Counts how many pixels use each color so the most common color comes first. */
     private static Map<Integer, Integer> getPixelCounts(BufferedImage img) {
         Map<Integer, Integer> counts = new HashMap<>();
         for (int y = 0; y < img.getHeight(); y++) {
@@ -339,6 +340,7 @@ public class VectorizationTask {
         return counts;
     }
 
+    /** Measures how different two colors are by comparing their red, green, and blue values. */
     private static double colorDistance(Color c1, Color c2) {
         int dr = c1.getRed() - c2.getRed();
         int dg = c1.getGreen() - c2.getGreen();
@@ -346,6 +348,7 @@ public class VectorizationTask {
         return Math.sqrt(dr * dr + dg * dg + db * db);
     }
 
+    /** Finds the Potrace program file for the current operating system. */
     private static File resolvePotraceBinary() {
         String os = System.getProperty("os.name").toLowerCase();
         String extension = os.contains("win") ? ".exe" : "";
@@ -365,6 +368,7 @@ public class VectorizationTask {
         return null;
     }
 
+    /** Reads Potrace's black-and-white PGM result back into an image. */
     private static BufferedImage readPGM(File pgmFile) throws IOException {
         try (InputStream in = new BufferedInputStream(new FileInputStream(pgmFile))) {
             String magic = readToken(in);
@@ -390,6 +394,7 @@ public class VectorizationTask {
         }
     }
 
+    /** Reads one header word from a PGM file, skipping spaces and comments. */
     private static String readToken(InputStream in) throws IOException {
         StringBuilder sb = new StringBuilder();
         int c;

@@ -114,6 +114,7 @@ public class MainController {
             boolean success = false;
             if (db.hasFiles()) {
                 success = true;
+                // accepts image
                 List<File> acceptedFiles = new ArrayList<>();
                 for (File file : db.getFiles()) {
                     String fileName = file.getName().toLowerCase();
@@ -185,6 +186,7 @@ public class MainController {
         executor.shutdown();
     }
 
+
     @FXML
     private void handleExportAll() {
         if (imageModel.isEmpty()) {
@@ -207,10 +209,11 @@ public class MainController {
         int totalFiles = imageModel.getSize();
 
         if (exportProgressBar != null) exportProgressBar.setProgress(0.0);
-
+// exports many images at once
         for (File src : imageModel.getUploadedFiles()) {
             executor.submit(() -> {
                 try {
+                //changes file name to .svg
                     String baseName = src.getName().replaceAll("(?i)\\.(png|jpg|jpeg)$", "");
                     File targetSvg = new File(selectedDir, baseName + ".svg");
 
@@ -364,6 +367,7 @@ public class MainController {
         if (backBtn != null) backBtn.setDisable(disabled || !imageModel.hasPrevious());
         if (nextBtn != null) nextBtn.setDisable(disabled || !imageModel.hasNext());
     }
+    //zooom
 
     @FXML private void handleZoomIn() { if (currentScale < MAX_SCALE) { currentScale += ZOOM_STEP; applyZoom(); } }
     @FXML private void handleZoomOut() { if (currentScale > MIN_SCALE) { currentScale -= ZOOM_STEP; applyZoom(); } }
